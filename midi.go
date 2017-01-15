@@ -28,7 +28,11 @@ func (d *Device) Close() error {
 
 // Read reads data from a MIDI device.
 func (d *Device) Read(buf []byte) (int, error) {
-	n, err := C.Midi_read(d.conn, C.CString(string(buf)), C.size_t(len(buf)))
+	cbuf := make([]C.char, len(buf))
+	n, err := C.Midi_read(d.conn, &cbuf[0], C.size_t(len(buf)))
+	for i := C.ssize_t(0); i < n; i++ {
+		buf[i] = byte(cbuf[i])
+	}
 	return int(n), err
 }
 
