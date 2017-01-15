@@ -16,8 +16,8 @@ type Device struct {
 
 // Open opens a MIDI device.
 func Open(deviceID string) (*Device, error) {
-	conn := C.Midi_open(C.CString(deviceID))
-	return &Device{conn: conn}, nil
+	conn, err := C.Midi_open(C.CString(deviceID))
+	return &Device{conn: conn}, err
 }
 
 // Close closes the MIDI connection.
