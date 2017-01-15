@@ -5,8 +5,12 @@ Currently only supports Linux.
 
 ## Install
 
-Requires ALSA development files.
-
 ```
 go get github.com/scgolang/midi
 ```
+
+*Note the following caveats:*
+
+### Linux
+
+Requires ALSA development files.
