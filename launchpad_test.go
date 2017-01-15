@@ -14,26 +14,29 @@ func TestLaunchpad(t *testing.T) {
 	// For the launchpad MIDI reference, see https://d19ulaff0trnck.cloudfront.net/sites/default/files/novation/downloads/4080/launchpad-programmers-reference.pdf
 	// t.SkipNow()
 
-	conn, err := Open("hw:1,0,0")
+	device, err := Open("hw:1,0,0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := conn.Write([]byte{0xB0, 0x00, 0x00}); err != nil {
+	if _, err := device.Write([]byte{0xB0, 0x00, 0x00}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := conn.Write([]byte{0xB0, 0x00, 0x7D}); err != nil {
+	if _, err := device.Write([]byte{0xB0, 0x00, 0x7D}); err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(2 * time.Second)
 
-	if _, err := conn.Write([]byte{0xB0, 0x00, 0x00}); err != nil {
+	if _, err := device.Write([]byte{0xB0, 0x00, 0x00}); err != nil {
 		t.Fatal(err)
 	}
 
 	// Test hangs here until you send some MIDI data!
 	buf := make([]byte, 3)
-	if _, err := conn.Read(buf); err != nil {
+	if _, err := device.Read(buf); err != nil {
+		t.Fatal(err)
+	}
+	if err := device.Close(); err != nil {
 		t.Fatal(err)
 	}
 }

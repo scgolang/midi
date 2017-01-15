@@ -8,31 +8,32 @@ package midi
 // #cgo linux LDFLAGS: -lasound
 import "C"
 
-// Midi provides an interface for raw MIDI devices.
-type Midi struct {
+// Device provides an interface for MIDI devices.
+type Device struct {
 	conn C.Midi
 	buf  []byte
 }
 
 // Open opens a MIDI device.
-func Open(device string) (*Midi, error) {
-	conn := C.Midi_open(C.CString(device))
-	return &Midi{conn: conn}, nil
+func Open(deviceID string) (*Device, error) {
+	conn := C.Midi_open(C.CString(deviceID))
+	return &Device{conn: conn}, nil
 }
 
 // Close closes the MIDI connection.
-func (midi *Midi) Close() error {
-	return nil
+func (d *Device) Close() error {
+	_, err := C.Midi_close(d.conn)
+	return err
 }
 
 // Read reads data from a MIDI device.
-func (midi *Midi) Read(buf []byte) (int, error) {
-	n, err := C.Midi_read(midi.conn, C.CString(string(buf)), C.size_t(len(buf)))
+func (d *Device) Read(buf []byte) (int, error) {
+	n, err := C.Midi_read(d.conn, C.CString(string(buf)), C.size_t(len(buf)))
 	return int(n), err
 }
 
 // Write writes data to a MIDI device.
-func (midi *Midi) Write(buf []byte) (int, error) {
-	n, err := C.Midi_write(midi.conn, C.CString(string(buf)), C.size_t(len(buf)))
+func (d *Device) Write(buf []byte) (int, error) {
+	n, err := C.Midi_write(d.conn, C.CString(string(buf)), C.size_t(len(buf)))
 	return int(n), err
 }
