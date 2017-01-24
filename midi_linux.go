@@ -4,20 +4,22 @@ package midi
 
 // #include <stddef.h>
 // #include <stdlib.h>
-// #include "midi.h"
+// #include "midi_linux.h"
 // #cgo linux LDFLAGS: -lasound
 import "C"
 
 // Device provides an interface for MIDI devices.
 type Device struct {
+	Name string
+
 	conn C.Midi
 	buf  []byte
 }
 
 // Open opens a MIDI device.
-func Open(deviceID string) (*Device, error) {
-	conn, err := C.Midi_open(C.CString(deviceID))
-	return &Device{conn: conn}, err
+func Open(deviceID, name string) (*Device, error) {
+	conn, err := C.Midi_open(C.CString(deviceID), C.CString(name))
+	return &Device{Name: name, conn: conn}, err
 }
 
 // Close closes the MIDI connection.

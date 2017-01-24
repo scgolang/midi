@@ -4,12 +4,13 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 // Midi represents a connection to a MIDI device.
 typedef struct Midi *Midi;
 
 // Midi_open opens a MIDI connection to the specified device.
-Midi Midi_open(const char *device_name);
+Midi Midi_open(const char *device_id, const char *name);
 
 // Midi_read reads bytes from the provided MIDI connection.
 ssize_t Midi_read(Midi midi, char *buffer, size_t buffer_size);

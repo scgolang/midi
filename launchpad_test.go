@@ -1,6 +1,7 @@
 package midi
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -14,7 +15,7 @@ func TestLaunchpad(t *testing.T) {
 	// For the launchpad MIDI reference, see https://d19ulaff0trnck.cloudfront.net/sites/default/files/novation/downloads/4080/launchpad-programmers-reference.pdf
 	// t.SkipNow()
 
-	device, err := Open("hw:1,0,0")
+	device, err := Open("101478690", "Launchpad Mini")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,10 +33,9 @@ func TestLaunchpad(t *testing.T) {
 	}
 
 	// Test hangs here until you send some MIDI data!
-	buf := make([]byte, 3)
-	if _, err := device.Read(buf); err != nil {
-		t.Fatal(err)
-	}
+	packet := <-device.Packets()
+	fmt.Printf("packet %#v\n", packet)
+
 	if err := device.Close(); err != nil {
 		t.Fatal(err)
 	}
