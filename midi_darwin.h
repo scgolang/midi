@@ -12,7 +12,7 @@
 typedef struct Midi *Midi;
 
 // Midi_open opens a MIDI connection to the specified device.
-Midi Midi_open(const char *device_id, const char *name);
+Midi Midi_open(const char *inputID, const char *outputID, const char *name);
 
 // Midi_read_proc is the callback that gets invoked when MIDI data comes in.
 void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcConnRefCon);

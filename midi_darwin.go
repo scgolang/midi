@@ -23,17 +23,6 @@ var (
 	packetChansMutex sync.RWMutex
 )
 
-//export SendPacket
-func SendPacket(conn C.Midi, c1 C.uchar, c2 C.uchar, c3 C.uchar) {
-	packetChansMutex.RLock()
-	for device, packetChan := range packetChans {
-		if device.conn == conn {
-			packetChan <- Packet{byte(c1), byte(c2), byte(c3)}
-		}
-	}
-	packetChansMutex.RUnlock()
-}
-
 // Device provides an interface for MIDI devices.
 type Device struct {
 	Name string
@@ -43,8 +32,8 @@ type Device struct {
 }
 
 // Open opens a MIDI device.
-func Open(deviceID, name string) (*Device, error) {
-	conn, err := C.Midi_open(C.CString(deviceID), C.CString(name))
+func Open(inputID, outputID, name string) (*Device, error) {
+	conn, err := C.Midi_open(C.CString(inputID), C.CString(outputID), C.CString(name))
 	if err != nil {
 		return nil, err
 	}
@@ -78,4 +67,15 @@ func (d *Device) Packets() (<-chan Packet, error) {
 func (d *Device) Write(buf []byte) (int, error) {
 	n, err := C.Midi_write(d.conn, C.CString(string(buf)), C.size_t(len(buf)))
 	return int(n), err
+}
+
+//export SendPacket
+func SendPacket(conn C.Midi, c1 C.uchar, c2 C.uchar, c3 C.uchar) {
+	packetChansMutex.RLock()
+	for device, packetChan := range packetChans {
+		if device.conn == conn {
+			packetChan <- Packet{byte(c1), byte(c2), byte(c3)}
+		}
+	}
+	packetChansMutex.RUnlock()
 }
