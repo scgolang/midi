@@ -33,7 +33,13 @@ func TestLaunchpad(t *testing.T) {
 	}
 
 	// Test hangs here until you send some MIDI data!
-	packet := <-device.Packets()
+	packets, err := device.Packets()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("waiting for packet")
+	packet := <-packets
 	fmt.Printf("packet %#v\n", packet)
 
 	if err := device.Close(); err != nil {

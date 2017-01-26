@@ -13,7 +13,7 @@
 #include "mem.h"
 #include "midi_darwin.h"
 
-extern void SendPacket(unsigned char c1, unsigned char c2, unsigned char c3);
+extern void SendPacket(Midi midi, unsigned char c1, unsigned char c2, unsigned char c3);
 
 // Midi represents a MIDI connection that uses the ALSA RawMidi API.
 struct Midi {
@@ -45,7 +45,7 @@ Midi Midi_open(const char *deviceID, const char *name) {
 		fprintf(stderr, "MIDI Object with ID %d must be a source.\n", uniqueID);
 		return NULL;
 	}
-	midi->endpoint = (MIDIEndpointRef) obj;
+	midi->input = (MIDIEndpointRef) obj;
 
 	rc = MIDIClientCreate(CFSTR("scgolang"), NULL, NULL, &midi->client);
 	if (rc != 0) {
@@ -57,7 +57,7 @@ Midi Midi_open(const char *deviceID, const char *name) {
 		fprintf(stderr, "error creating midi port\n");
 		return NULL;
 	}
-	rc = MIDIPortConnectSource(midi->port, midi->endpoint, NULL);
+	rc = MIDIPortConnectSource(midi->port, midi->input, midi);
 	if (rc != 0) {
 		fprintf(stderr, "error connecting source\n");
 		return NULL;
@@ -69,10 +69,13 @@ Midi Midi_open(const char *deviceID, const char *name) {
 // Midi_read_proc is the callback that gets invoked when MIDI data comes int.
 void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcConnRefCon) {
 	const MIDIPacket *pkt = &pkts->packet[0];
+
+	Midi midi = (Midi) srcConnRefCon;
+	
 	for (int i = 0; i > pkts->numPackets; i++) {
 		pkt = MIDIPacketNext(pkt);
 	}
-	SendPacket((unsigned char) pkt->data[0], (unsigned char) pkt->data[1], (unsigned char) pkt->data[2]);
+	SendPacket(midi, (unsigned char) pkt->data[0], (unsigned char) pkt->data[1], (unsigned char) pkt->data[2]);
 }
 
 // Midi_write writes bytes to the provided MIDI connection.

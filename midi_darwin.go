@@ -8,22 +8,38 @@ package midi
 // #cgo darwin LDFLAGS: -framework CoreFoundation -framework CoreMIDI
 import "C"
 
+import (
+	"errors"
+	"sync"
+)
+
+var ErrDeviceNotFound = errors.New("device not found")
+
 // Packet is a MIDI packet.
 type Packet [3]byte
 
-var packetChan = make(chan Packet)
+var (
+	packetChans      = map[*Device]chan Packet{}
+	packetChansMutex sync.RWMutex
+)
 
 //export SendPacket
-func SendPacket(c1 C.uchar, c2 C.uchar, c3 C.uchar) {
-	packetChan <- Packet{byte(c1), byte(c2), byte(c3)}
+func SendPacket(conn C.Midi, c1 C.uchar, c2 C.uchar, c3 C.uchar) {
+	packetChansMutex.RLock()
+	for device, packetChan := range packetChans {
+		if device.conn == conn {
+			packetChan <- Packet{byte(c1), byte(c2), byte(c3)}
+		}
+	}
+	packetChansMutex.RUnlock()
 }
 
 // Device provides an interface for MIDI devices.
 type Device struct {
 	Name string
 
-	conn C.Midi
 	buf  []byte
+	conn C.Midi
 }
 
 // Open opens a MIDI device.
@@ -32,7 +48,11 @@ func Open(deviceID, name string) (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Device{Name: name, conn: conn}, nil
+	device := &Device{Name: name, conn: conn}
+	packetChansMutex.Lock()
+	packetChans[device] = make(chan Packet)
+	packetChansMutex.Unlock()
+	return device, nil
 }
 
 // Close closes the connection to the MIDI device.
@@ -42,8 +62,16 @@ func (d *Device) Close() error {
 }
 
 // Packets emits MIDI packets.
-func (d *Device) Packets() <-chan Packet {
-	return packetChan
+func (d *Device) Packets() (<-chan Packet, error) {
+	packetChansMutex.RLock()
+	for device, packetChan := range packetChans {
+		if d.conn == device.conn {
+			packetChansMutex.RUnlock()
+			return packetChan, nil
+		}
+	}
+	packetChansMutex.RUnlock()
+	return nil, ErrDeviceNotFound
 }
 
 // Write writes data to a MIDI device.
