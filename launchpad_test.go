@@ -22,15 +22,19 @@ func TestLaunchpad(t *testing.T) {
 	if _, err := device.Write([]byte{0xB0, 0x00, 0x00}); err != nil {
 		t.Fatal(err)
 	}
+	fmt.Println("reset buttons")
+
 	if _, err := device.Write([]byte{0xB0, 0x00, 0x7D}); err != nil {
 		t.Fatal(err)
 	}
+	fmt.Println("buttons should be lit")
 
 	time.Sleep(2 * time.Second)
 
 	if _, err := device.Write([]byte{0xB0, 0x00, 0x00}); err != nil {
 		t.Fatal(err)
 	}
+	fmt.Println("reset buttons")
 
 	// Test hangs here until you send some MIDI data!
 	packets, err := device.Packets()

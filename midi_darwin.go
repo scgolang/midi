@@ -37,6 +37,9 @@ func Open(inputID, outputID, name string) (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
+	if conn == nil {
+		return nil, errors.New("could not connect to device")
+	}
 	device := &Device{Name: name, conn: conn}
 	packetChansMutex.Lock()
 	packetChans[device] = make(chan Packet)

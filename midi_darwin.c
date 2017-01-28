@@ -9,6 +9,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreMIDI/CoreMIDI.h>
 #include <CoreMIDI/MIDIServices.h>
+#include <mach/mach_time.h>
 
 #include "mem.h"
 #include "midi_darwin.h"
@@ -98,11 +99,28 @@ ssize_t Midi_write(Midi midi, const char *buffer, size_t buffer_size) {
 	assert(midi);
 
 	MIDIPacketList pkts;
-	MIDIPacket *first = MIDIPacketListInit(&pkts);
-	
-	/* OSStatus rc = MIDISend(midi->outputPort, midi->output); */
-	
-	return 0;
+	MIDIPacket    *cur        = MIDIPacketListInit(&pkts);
+	MIDITimeStamp  now        = mach_absolute_time();
+	size_t         numPackets = buffer_size / 3;
+	ByteCount      listSize   = numPackets * 32;
+
+	for (size_t i = 0; i < numPackets; i++) {
+		Byte data[3];
+		for (int j = 0; j < 3; j++) {
+			data[j] = buffer[i+j];
+		}
+		cur = MIDIPacketListAdd(&pkts, listSize, cur, now, 3, data);
+		if (cur == NULL) {
+			fprintf(stderr, "error adding packet to list\n");
+			return 0;
+		}
+	}
+	OSStatus rc = MIDISend(midi->outputPort, midi->output, &pkts);
+	if (rc != 0) {
+		errno = rc;
+		return 0;
+	}
+	return listSize;
 }
 
 // Midi_close closes a MIDI connection.
