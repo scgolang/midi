@@ -101,8 +101,8 @@ ssize_t Midi_write(Midi midi, const char *buffer, size_t buffer_size) {
 	MIDIPacketList pkts;
 	MIDIPacket    *cur        = MIDIPacketListInit(&pkts);
 	MIDITimeStamp  now        = mach_absolute_time();
-	size_t         numPackets = buffer_size / 3;
-	ByteCount      listSize   = numPackets * 32;
+	size_t         numPackets = (buffer_size / 256) + 1;
+	ByteCount      listSize   = numPackets * 256;
 
 	for (size_t i = 0; i < numPackets; i++) {
 		Byte data[3];
