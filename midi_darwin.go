@@ -17,7 +17,7 @@ import (
 
 // Common errors.
 var (
-	ErrDeviceNotFound = errors.New("device not found")
+	ErrDeviceNotFound = errors.New("device not found, did you open the device?")
 )
 
 // Packet is a MIDI packet.
@@ -30,23 +30,28 @@ var (
 
 // Device provides an interface for MIDI devices.
 type Device struct {
-	Name string
+	InputID  string
+	Name     string
+	OutputID string
 
-	buf  []byte
+	// QueueSize controls the buffer size of the read channel. Use 0 for blocking reads.
+	QueueSize int
+
 	conn C.Midi
 }
 
 // Open opens a MIDI device.
-func Open(inputID, outputID, name string) (*Device, error) {
-	result := C.Midi_open(C.CString(inputID), C.CString(outputID), C.CString(name))
+// queueSize is the number of packets to buffer in the channel associated with the device.
+func (d *Device) Open() error {
+	result := C.Midi_open(C.CString(d.InputID), C.CString(d.OutputID), C.CString(d.Name))
 	if result.error != 0 {
-		return nil, coreMidiError(result.error)
+		return coreMidiError(result.error)
 	}
-	device := &Device{Name: name, conn: result.midi}
+	d.conn = result.midi
 	packetChansMutex.Lock()
-	packetChans[device] = make(chan Packet)
+	packetChans[d] = make(chan Packet, d.QueueSize)
 	packetChansMutex.Unlock()
-	return device, nil
+	return nil
 }
 
 // Close closes the connection to the MIDI device.
