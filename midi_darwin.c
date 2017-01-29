@@ -1,14 +1,9 @@
-// +build cgo
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
 #include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreMIDI/CoreMIDI.h>
-#include <CoreMIDI/MIDIServices.h>
 #include <mach/mach_time.h>
 
 #include "mem.h"
@@ -29,7 +24,7 @@ struct Midi {
 
 // Midi_open opens a MIDI connection to the specified device.
 // If there is an error it returns NULL.
-Midi Midi_open(const char *inputID, const char *outputID, const char *name) {
+Midi_open_result Midi_open(const char *inputID, const char *outputID, const char *name) {
 	Midi           midi;
 	OSStatus       rc;
 	
@@ -41,26 +36,21 @@ Midi Midi_open(const char *inputID, const char *outputID, const char *name) {
 
 	rc = MIDIClientCreate(CFSTR("scgolang"), NULL, NULL, &midi->client);
 	if (rc != 0) {
-		fprintf(stderr, "error creating midi client\n");
-		return NULL;
+		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
 	rc = MIDIInputPortCreate(midi->client, CFSTR("scgolang input"), Midi_read_proc, NULL, &midi->inputPort);
 	if (rc != 0) {
-		fprintf(stderr, "error creating midi input port\n");
-		return NULL;
+		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
 	rc = MIDIOutputPortCreate(midi->client, CFSTR("scgolang output"), &midi->outputPort);
 	if (rc != 0) {
-		fprintf(stderr, "error creating midi output port\n");
-		return NULL;
+		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
 	rc = MIDIPortConnectSource(midi->inputPort, midi->input, midi);
 	if (rc != 0) {
-		fprintf(stderr, "error connecting source\n");
-		return NULL;
+		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
-	errno = 0;
-	return midi;
+	return (Midi_open_result) { .midi =  midi, .error = 0 };
 }
 
 MIDIEndpointRef get_endpoint_by_id(const char *id,  MIDIObjectType expectedObjType, const char *typeName) {
@@ -95,7 +85,7 @@ void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcC
 }
 
 // Midi_write writes bytes to the provided MIDI connection.
-ssize_t Midi_write(Midi midi, const char *buffer, size_t buffer_size) {
+Midi_write_result Midi_write(Midi midi, const char *buffer, size_t buffer_size) {
 	assert(midi);
 
 	MIDIPacketList pkts;
@@ -111,20 +101,28 @@ ssize_t Midi_write(Midi midi, const char *buffer, size_t buffer_size) {
 		}
 		cur = MIDIPacketListAdd(&pkts, listSize, cur, now, 3, data);
 		if (cur == NULL) {
-			fprintf(stderr, "error adding packet to list\n");
-			return 0;
+			return (Midi_write_result) { .n = 0, .error = -10900 };
 		}
 	}
 	OSStatus rc = MIDISend(midi->outputPort, midi->output, &pkts);
 	if (rc != 0) {
-		errno = rc;
-		return 0;
+		return (Midi_write_result) { .n = 0, .error = rc };
 	}
-	return listSize;
+	return (Midi_write_result) { .n = listSize, .error = 0 };
 }
 
 // Midi_close closes a MIDI connection.
 int Midi_close(Midi midi) {
 	assert(midi);
-	return 0;
+
+	OSStatus rc1, rc2, rc3;
+
+	rc1 = MIDIPortDispose(midi->inputPort);
+	rc2 = MIDIPortDispose(midi->outputPort);
+	rc3 = MIDIClientDispose(midi->client);
+
+	if      (rc1 != 0) return rc1;
+	else if (rc2 != 0) return rc2;
+	else if (rc3 != 0) return rc3;
+	else               return 0;
 }
