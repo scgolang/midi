@@ -30,9 +30,7 @@ var (
 
 // Device provides an interface for MIDI devices.
 type Device struct {
-	InputID  string
-	Name     string
-	OutputID string
+	Name string
 
 	// QueueSize controls the buffer size of the read channel. Use 0 for blocking reads.
 	QueueSize int
@@ -43,7 +41,7 @@ type Device struct {
 // Open opens a MIDI device.
 // queueSize is the number of packets to buffer in the channel associated with the device.
 func (d *Device) Open() error {
-	result := C.Midi_open(C.CString(d.InputID), C.CString(d.OutputID), C.CString(d.Name))
+	result := C.Midi_open(C.CString(d.Name))
 	if result.error != 0 {
 		return coreMidiError(result.error)
 	}

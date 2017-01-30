@@ -22,8 +22,15 @@ typedef struct Midi_open_result {
 	OSStatus error;
 } Midi_open_result;
 
+typedef struct Midi_device_endpoints {
+	MIDIDeviceRef   device;
+	MIDIEndpointRef input;
+	MIDIEndpointRef output;
+	OSStatus        error;
+} Midi_device_endpoints;
+
 // Midi_open opens a MIDI connection to the specified device.
-Midi_open_result Midi_open(const char *inputID, const char *outputID, const char *name);
+Midi_open_result Midi_open(const char *name);
 
 // Midi_read_proc is the callback that gets invoked when MIDI data comes in.
 void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcConnRefCon);

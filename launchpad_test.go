@@ -16,9 +16,7 @@ func TestLaunchpad(t *testing.T) {
 	// t.SkipNow()
 
 	device := &Device{
-		InputID:   "101478690",
 		Name:      "Launchpad Mini",
-		OutputID:  "-1954101228",
 		QueueSize: 0,
 	}
 	if err := device.Open(); err != nil {

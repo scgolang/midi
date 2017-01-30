@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
+#include <string.h>
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreMIDI/CoreMIDI.h>
@@ -11,7 +12,8 @@
 
 extern void SendPacket(Midi midi, unsigned char c1, unsigned char c2, unsigned char c3);
 
-MIDIEndpointRef get_endpoint_by_id(const char *id,  MIDIObjectType expectedObjType, const char *typeName);
+Midi_device_endpoints  find_device_endpoints(const char *device);
+char                  *CFStringToUTF8(CFStringRef aString);
 
 // Midi represents a MIDI connection that uses the ALSA RawMidi API.
 struct Midi {
@@ -24,15 +26,19 @@ struct Midi {
 
 // Midi_open opens a MIDI connection to the specified device.
 // If there is an error it returns NULL.
-Midi_open_result Midi_open(const char *inputID, const char *outputID, const char *name) {
+Midi_open_result Midi_open(const char *name) {
 	Midi           midi;
 	OSStatus       rc;
 	
 	NEW(midi);
 
 	// Read input and output endpoints.
-	midi->input  = get_endpoint_by_id(inputID, kMIDIObjectType_Source, "source");
-	midi->output = get_endpoint_by_id(outputID, kMIDIObjectType_Destination, "destination");
+	Midi_device_endpoints device_endpoints = find_device_endpoints(name);
+	if (device_endpoints.error != 0) {
+		return (Midi_open_result) { .midi = NULL, .error = device_endpoints.error };
+	}
+	midi->input  = device_endpoints.input;
+	midi->output = device_endpoints.output;
 
 	rc = MIDIClientCreate(CFSTR("scgolang"), NULL, NULL, &midi->client);
 	if (rc != 0) {
@@ -51,25 +57,6 @@ Midi_open_result Midi_open(const char *inputID, const char *outputID, const char
 		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
 	return (Midi_open_result) { .midi =  midi, .error = 0 };
-}
-
-MIDIEndpointRef get_endpoint_by_id(const char *id,  MIDIObjectType expectedObjType, const char *typeName) {
-	MIDIObjectRef  obj;
-	MIDIObjectType objType;
-	OSStatus       rc;
-	MIDIUniqueID   uniqueID;
-	
-	sscanf(id, "%" SCNd32, &uniqueID);
-	rc = MIDIObjectFindByUniqueID(uniqueID, &obj, &objType);
-	if (rc != 0) {
-		fprintf(stderr, "No object with ID %" SCNd32 "\n", uniqueID);
-		return rc;
-	}
-	if (objType != expectedObjType) {
-		fprintf(stderr, "MIDI Object with ID %d must be a %s.\n", uniqueID, typeName);
-		return rc;
-	}
-	return (MIDIEndpointRef) obj;
 }
 
 // Midi_read_proc is the callback that gets invoked when MIDI data comes int.
@@ -125,4 +112,55 @@ int Midi_close(Midi midi) {
 	else if (rc2 != 0) return rc2;
 	else if (rc3 != 0) return rc3;
 	else               return 0;
+}
+
+Midi_device_endpoints find_device_endpoints(const char *name) {
+	ItemCount numDevices = MIDIGetNumberOfDevices();
+	OSStatus  rc;
+
+	for (int i = 0; i < numDevices; i++) {
+		CFStringRef   deviceName;
+		MIDIDeviceRef deviceRef = MIDIGetDevice(i);
+		
+		rc = MIDIObjectGetStringProperty(deviceRef, kMIDIPropertyName, &deviceName);
+		if (rc != 0) {
+			return (Midi_device_endpoints) { .device = 0, .input = 0, .output = 0, .error = rc };
+		}
+		if (strcmp(CFStringToUTF8(deviceName), name) != 0) {
+			continue;
+		}
+		ItemCount numEntities = MIDIDeviceGetNumberOfEntities(deviceRef);
+		
+		for (int i = 0; i < numEntities; i++) {
+			MIDIEntityRef entityRef       = MIDIDeviceGetEntity(deviceRef, i);
+			ItemCount     numDestinations = MIDIGetNumberOfDestinations(entityRef);
+			ItemCount     numSources      = MIDIGetNumberOfSources(entityRef);
+
+			if (numDestinations < 1 || numSources < 1) {
+				continue;
+			}
+			MIDIEndpointRef input  = MIDIGetSource(0);
+			MIDIEndpointRef output = MIDIGetDestination(0);
+
+			return (Midi_device_endpoints) { .device = deviceRef, .input = input, .output = output, .error = 0 };
+		}
+	}
+	return (Midi_device_endpoints) { .device = 0, .input = 0, .output = 0, .error = -10901 };
+}
+
+char *CFStringToUTF8(CFStringRef aString) {
+	if (aString == NULL) {
+		return NULL;
+	}
+
+	CFIndex length = CFStringGetLength(aString);
+	CFIndex maxSize =
+		CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+	char *buffer = (char *)malloc(maxSize);
+	if (CFStringGetCString(aString, buffer, maxSize,
+			       kCFStringEncodingUTF8)) {
+		return buffer;
+	}
+	free(buffer); // If we failed
+	return NULL;
 }
