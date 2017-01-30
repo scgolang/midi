@@ -16,14 +16,17 @@ struct Midi {
 
 // Midi_open opens a MIDI connection to the specified device.
 // If there is an error it returns NULL.
-Midi Midi_open(const char *device_id, const char *name) {
+Midi_open_result Midi_open(const char *name) {
 	Midi midi;
-	int rc;
+	int  rc;
+	
 	NEW(midi);
-	rc = snd_rawmidi_open(&midi->in, &midi->out, device_id, SND_RAWMIDI_SYNC);
-	errno = rc; // Not sure if the rawmidi return codes map to errno values.
-	if (rc != 0) return NULL;
-	return midi;
+	
+	rc = snd_rawmidi_open(&midi->in, &midi->out, name, SND_RAWMIDI_SYNC);
+	if (rc != 0) {
+		return (Midi_open_result) { .midi = NULL, .error = rc };
+	}
+	return (Midi_open_result) { .midi = midi, .error = 0 };
 }
 
 // Midi_read reads bytes from the provided MIDI connection.

@@ -8,24 +8,57 @@ package midi
 // #cgo linux LDFLAGS: -lasound
 import "C"
 
+import (
+	"fmt"
+	"os"
+
+	"github.com/pkg/errors"
+)
+
+// Packet is a MIDI packet.
+type Packet [3]byte
+
 // Device provides an interface for MIDI devices.
 type Device struct {
-	Name string
+	Name      string
+	QueueSize int
 
 	conn C.Midi
 	buf  []byte
 }
 
 // Open opens a MIDI device.
-func Open(deviceID, name string) (*Device, error) {
-	conn, err := C.Midi_open(C.CString(deviceID), C.CString(name))
-	return &Device{Name: name, conn: conn}, err
+func (d *Device) Open() error {
+	result := C.Midi_open(C.CString(d.Name))
+	if result.error != 0 {
+		return errors.Errorf("error opening device %d", result.error)
+	}
+	d.conn = result.midi
+	return nil
 }
 
 // Close closes the MIDI connection.
 func (d *Device) Close() error {
 	_, err := C.Midi_close(d.conn)
 	return err
+}
+
+// Packets returns a read-only channel that emits packets.
+func (d *Device) Packets() (<-chan Packet, error) {
+	var (
+		buf = make([]byte, 3)
+		ch  = make(chan Packet, d.QueueSize)
+	)
+	go func() {
+		for {
+			if _, err := d.Read(buf); err != nil {
+				fmt.Fprintf(os.Stderr, "could not read from device: %s", err)
+				return
+			}
+			ch <- Packet{buf[0], buf[1], buf[2]}
+		}
+	}()
+	return ch, nil
 }
 
 // Read reads data from a MIDI device.

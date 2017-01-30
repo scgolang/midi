@@ -9,8 +9,14 @@
 // Midi represents a connection to a MIDI device.
 typedef struct Midi *Midi;
 
+// Midi_open_result enables us to return both the Midi instance and an error from Midi_open.
+typedef struct Midi_open_result {
+	Midi midi;
+	int  error;
+} Midi_open_result;
+
 // Midi_open opens a MIDI connection to the specified device.
-Midi Midi_open(const char *device_id, const char *name);
+Midi_open_result Midi_open(const char *name);
 
 // Midi_read reads bytes from the provided MIDI connection.
 ssize_t Midi_read(Midi midi, char *buffer, size_t buffer_size);
