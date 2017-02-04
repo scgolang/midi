@@ -53,6 +53,7 @@ func (d *Device) Packets() (<-chan Packet, error) {
 		for {
 			if _, err := d.Read(buf); err != nil {
 				fmt.Fprintf(os.Stderr, "could not read from device: %s", err)
+				close(ch)
 				return
 			}
 			ch <- Packet{buf[0], buf[1], buf[2]}
@@ -62,6 +63,7 @@ func (d *Device) Packets() (<-chan Packet, error) {
 }
 
 // Read reads data from a MIDI device.
+// Note that this method  is only available on Linux.
 func (d *Device) Read(buf []byte) (int, error) {
 	cbuf := make([]C.char, len(buf))
 	n, err := C.Midi_read(d.conn, &cbuf[0], C.size_t(len(buf)))
