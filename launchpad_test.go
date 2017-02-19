@@ -16,7 +16,7 @@ func TestLaunchpad(t *testing.T) {
 	// t.SkipNow()
 
 	device := &Device{
-		Name:      "hw:0,0,0",
+		Name:      "hw:0",
 		QueueSize: 0,
 	}
 	if err := device.Open(); err != nil {
