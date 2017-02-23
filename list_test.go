@@ -10,5 +10,10 @@ func TestDevices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf("devices %#v\n", devices)
+	for i, d := range devices {
+		if d == nil {
+			continue
+		}
+		fmt.Printf("device %d: %#v\n", i, *d)
+	}
 }

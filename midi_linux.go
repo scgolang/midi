@@ -101,7 +101,7 @@ type Stream struct {
 	Name string
 }
 
-func Devices() ([]Device, error) {
+func Devices() ([]*Device, error) {
 	var card C.int = -1
 
 	if rc := C.snd_card_next(&card); rc != 0 {
@@ -110,7 +110,7 @@ func Devices() ([]Device, error) {
 	if card < 0 {
 		return nil, errors.New("no sound card found")
 	}
-	devices := []Device{}
+	devices := []*Device{}
 
 	for {
 		cardDevices, err := getCardDevices(card)
@@ -128,7 +128,7 @@ func Devices() ([]Device, error) {
 	return devices, nil
 }
 
-func getCardDevices(card C.int) ([]Device, error) {
+func getCardDevices(card C.int) ([]*Device, error) {
 	var (
 		ctl  *C.snd_ctl_t
 		name = C.CString(fmt.Sprintf("hw:%d", card))
@@ -139,7 +139,7 @@ func getCardDevices(card C.int) ([]Device, error) {
 	C.free(unsafe.Pointer(name))
 
 	var (
-		cardDevices       = []Device{}
+		cardDevices       = []*Device{}
 		device      C.int = -1
 	)
 	for {
@@ -161,7 +161,7 @@ func getCardDevices(card C.int) ([]Device, error) {
 	return cardDevices, nil
 }
 
-func getDeviceDevices(ctl *C.snd_ctl_t, card C.int, device C.uint) ([]Device, error) {
+func getDeviceDevices(ctl *C.snd_ctl_t, card C.int, device C.uint) ([]*Device, error) {
 	var info *C.snd_rawmidi_info_t
 	C.snd_rawmidi_info_malloc(&info)
 	C.snd_rawmidi_info_set_device(info, device)
@@ -192,7 +192,7 @@ func getDeviceDevices(ctl *C.snd_ctl_t, card C.int, device C.uint) ([]Device, er
 	if subs == C.uint(0) {
 		return nil, errors.New("no streams")
 	}
-	devices := []Device{}
+	devices := []*Device{}
 
 	for sub := C.uint(0); sub < subs; sub++ {
 		subDevice, err := getSubdevice(ctl, info, card, device, sub, subsIn, subsOut)
@@ -204,7 +204,7 @@ func getDeviceDevices(ctl *C.snd_ctl_t, card C.int, device C.uint) ([]Device, er
 	return devices, nil
 }
 
-func getSubdevice(ctl *C.snd_ctl_t, info *C.snd_rawmidi_info_t, card C.int, device, sub, subsIn, subsOut C.uint) (Device, error) {
+func getSubdevice(ctl *C.snd_ctl_t, info *C.snd_rawmidi_info_t, card C.int, device, sub, subsIn, subsOut C.uint) (*Device, error) {
 	if sub < subsIn {
 		C.snd_rawmidi_info_set_stream(info, C.SND_RAWMIDI_STREAM_INPUT)
 	} else {
@@ -212,7 +212,7 @@ func getSubdevice(ctl *C.snd_ctl_t, info *C.snd_rawmidi_info_t, card C.int, devi
 	}
 	C.snd_rawmidi_info_set_subdevice(info, sub)
 	if rc := C.snd_ctl_rawmidi_info(ctl, info); rc != 0 {
-		return Device{}, alsaMidiError(rc)
+		return nil, alsaMidiError(rc)
 	}
 	var (
 		name    = C.GoString(C.snd_rawmidi_info_get_name(info))
@@ -227,13 +227,13 @@ func getSubdevice(ctl *C.snd_ctl_t, info *C.snd_rawmidi_info_t, card C.int, devi
 		dt = DeviceDuplex
 	}
 	if sub == 0 && len(subName) > 0 && subName[0] == 0 {
-		return Device{
+		return &Device{
 			ID:   fmt.Sprintf("hw:%d,%d", card, device),
 			Name: name,
 			Type: dt,
 		}, nil
 	}
-	return Device{
+	return &Device{
 		ID:   fmt.Sprintf("hw:%d,%d,%d", card, device, sub),
 		Name: subName,
 		Type: dt,
