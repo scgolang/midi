@@ -45,11 +45,12 @@ func (d *Device) Open() error {
 		id     = C.CString(d.ID)
 		result = C.Midi_open(id)
 	)
+	defer C.free(unsafe.Pointer(id))
+
 	if result.error != 0 {
 		return errors.Errorf("error opening device %d", result.error)
 	}
 	d.conn = result.midi
-	C.free(unsafe.Pointer(id))
 	return nil
 }
 
@@ -133,11 +134,11 @@ func getCardDevices(card C.int) ([]*Device, error) {
 		ctl  *C.snd_ctl_t
 		name = C.CString(fmt.Sprintf("hw:%d", card))
 	)
+	defer C.free(unsafe.Pointer(name))
+
 	if rc := C.snd_ctl_open(&ctl, name, 0); rc != 0 {
 		return nil, alsaMidiError(rc)
 	}
-	C.free(unsafe.Pointer(name))
-
 	var (
 		cardDevices       = []*Device{}
 		device      C.int = -1
@@ -165,6 +166,8 @@ func getDeviceDevices(ctl *C.snd_ctl_t, card C.int, device C.uint) ([]*Device, e
 	var info *C.snd_rawmidi_info_t
 	C.snd_rawmidi_info_malloc(&info)
 	C.snd_rawmidi_info_set_device(info, device)
+
+	defer C.snd_rawmidi_info_free(info)
 
 	// Get inputs.
 	var subsIn C.uint
