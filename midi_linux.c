@@ -1,6 +1,5 @@
 // +build cgo
 #include <assert.h>
-#include <errno.h>
 #include <stddef.h>
 
 #include <alsa/asoundlib.h>
