@@ -12,9 +12,6 @@
 
 extern void SendPacket(Midi midi, unsigned char c1, unsigned char c2, unsigned char c3);
 
-Midi_device_endpoints  find_device_endpoints(const char *device);
-char                  *CFStringToUTF8(CFStringRef aString);
-
 // Midi represents a MIDI connection that uses the ALSA RawMidi API.
 struct Midi {
 	MIDIClientRef   client;
@@ -26,19 +23,14 @@ struct Midi {
 
 // Midi_open opens a MIDI connection to the specified device.
 // If there is an error it returns NULL.
-Midi_open_result Midi_open(const char *name) {
-	Midi           midi;
-	OSStatus       rc;
+Midi_open_result Midi_open(MIDIEndpointRef input, MIDIEndpointRef output) {
+	Midi     midi;
+	OSStatus rc;
 	
 	NEW(midi);
 
-	// Read input and output endpoints.
-	Midi_device_endpoints device_endpoints = find_device_endpoints(name);
-	if (device_endpoints.error != 0) {
-		return (Midi_open_result) { .midi = NULL, .error = device_endpoints.error };
-	}
-	midi->input  = device_endpoints.input;
-	midi->output = device_endpoints.output;
+	midi->input  = input;
+	midi->output = output;
 
 	rc = MIDIClientCreate(CFSTR("scgolang"), NULL, NULL, &midi->client);
 	if (rc != 0) {
@@ -52,7 +44,7 @@ Midi_open_result Midi_open(const char *name) {
 	if (rc != 0) {
 		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
-	rc = MIDIPortConnectSource(midi->inputPort, midi->input, midi);
+	rc = MIDIPortConnectSource(midi->inputPort, input, midi);
 	if (rc != 0) {
 		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
@@ -112,40 +104,6 @@ int Midi_close(Midi midi) {
 	else if (rc2 != 0) return rc2;
 	else if (rc3 != 0) return rc3;
 	else               return 0;
-}
-
-Midi_device_endpoints find_device_endpoints(const char *name) {
-	ItemCount numDevices = MIDIGetNumberOfDevices();
-	OSStatus  rc;
-
-	for (int i = 0; i < numDevices; i++) {
-		CFStringRef   deviceName;
-		MIDIDeviceRef deviceRef = MIDIGetDevice(i);
-		
-		rc = MIDIObjectGetStringProperty(deviceRef, kMIDIPropertyName, &deviceName);
-		if (rc != 0) {
-			return (Midi_device_endpoints) { .device = 0, .input = 0, .output = 0, .error = rc };
-		}
-		if (strcmp(CFStringToUTF8(deviceName), name) != 0) {
-			continue;
-		}
-		ItemCount numEntities = MIDIDeviceGetNumberOfEntities(deviceRef);
-		
-		for (int i = 0; i < numEntities; i++) {
-			MIDIEntityRef entityRef       = MIDIDeviceGetEntity(deviceRef, i);
-			ItemCount     numDestinations = MIDIGetNumberOfDestinations(entityRef);
-			ItemCount     numSources      = MIDIGetNumberOfSources(entityRef);
-
-			if (numDestinations < 1 || numSources < 1) {
-				continue;
-			}
-			MIDIEndpointRef input  = MIDIGetSource(0);
-			MIDIEndpointRef output = MIDIGetDestination(0);
-
-			return (Midi_device_endpoints) { .device = deviceRef, .input = input, .output = output, .error = 0 };
-		}
-	}
-	return (Midi_device_endpoints) { .device = 0, .input = 0, .output = 0, .error = -10901 };
 }
 
 char *CFStringToUTF8(CFStringRef aString) {

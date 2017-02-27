@@ -15,7 +15,19 @@ func TestLaunchpad(t *testing.T) {
 	// For the launchpad MIDI reference, see https://d19ulaff0trnck.cloudfront.net/sites/default/files/novation/downloads/4080/launchpad-programmers-reference.pdf
 	// t.SkipNow()
 
-	device := &Device{ID: "hw:0"}
+	devices, err := Devices()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var device *Device
+	for _, d := range devices {
+		if d.Name == "Launchpad Mini" {
+			device = d
+		}
+	}
+	if device == nil {
+		t.Fatal("getting device Launchpad Mini")
+	}
 	if err := device.Open(); err != nil {
 		t.Fatal(err)
 	}

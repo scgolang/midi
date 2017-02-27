@@ -1,5 +1,3 @@
-// Package midi is a self-contained (i.e. doesn't depend on a C library)
-// package for talking to midi devices in Go.
 package midi
 
 // #include <alsa/asoundlib.h>
@@ -15,18 +13,6 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-)
-
-// Packet is a MIDI packet.
-type Packet [3]byte
-
-// DeviceType is a flag that says if a device is an input, an output, or duplex.
-type DeviceType int
-
-const (
-	DeviceInput DeviceType = iota
-	DeviceOutput
-	DeviceDuplex
 )
 
 // Device provides an interface for MIDI devices.
