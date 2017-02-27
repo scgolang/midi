@@ -142,6 +142,7 @@ func coreMidiError(code C.OSStatus) error {
 	}
 }
 
+// Devices returns a list of devices.
 func Devices() ([]*Device, error) {
 	var (
 		maxEndpoints    C.ItemCount

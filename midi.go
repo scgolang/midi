@@ -8,6 +8,7 @@ type Packet [3]byte
 // DeviceType is a flag that says if a device is an input, an output, or duplex.
 type DeviceType int
 
+// Device types.
 const (
 	DeviceInput DeviceType = iota
 	DeviceOutput

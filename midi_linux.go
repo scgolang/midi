@@ -84,10 +84,7 @@ func (d *Device) Write(buf []byte) (int, error) {
 	return int(n), err
 }
 
-type Stream struct {
-	Name string
-}
-
+// Devices returns a list of devices.
 func Devices() ([]*Device, error) {
 	var card C.int = -1
 
