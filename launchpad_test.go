@@ -56,6 +56,9 @@ func TestLaunchpad(t *testing.T) {
 
 	fmt.Println("waiting for packet")
 	packet := <-packets
+	if packet.Err != nil {
+		t.Fatal(err)
+	}
 	fmt.Printf("packet %#v\n", packet)
 
 	if err := device.Close(); err != nil {

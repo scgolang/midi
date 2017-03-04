@@ -16,7 +16,7 @@ import (
 
 // Common errors.
 var (
-	ErrDeviceNotFound = errors.New("device not found, did you open the device?")
+	ErrNotOpen = errors.New("Did you remember to open the device?")
 )
 
 var (
@@ -58,6 +58,7 @@ func (d *Device) Close() error {
 }
 
 // Packets emits MIDI packets.
+// If the device has not been opened it will return ErrNotOpen.
 func (d *Device) Packets() (<-chan Packet, error) {
 	packetChansMutex.RLock()
 	for device, packetChan := range packetChans {
@@ -67,7 +68,7 @@ func (d *Device) Packets() (<-chan Packet, error) {
 		}
 	}
 	packetChansMutex.RUnlock()
-	return nil, ErrDeviceNotFound
+	return nil, ErrNotOpen
 }
 
 // Write writes data to a MIDI device.
@@ -84,7 +85,9 @@ func SendPacket(conn C.Midi, c1 C.uchar, c2 C.uchar, c3 C.uchar) {
 	packetChansMutex.RLock()
 	for device, packetChan := range packetChans {
 		if device.conn == conn {
-			packetChan <- Packet{byte(c1), byte(c2), byte(c3)}
+			packetChan <- Packet{
+				Data: [3]byte{byte(c1), byte(c2), byte(c3)},
+			}
 		}
 	}
 	packetChansMutex.RUnlock()
@@ -181,11 +184,11 @@ func Devices() ([]*Device, error) {
 			obj = C.MIDIObjectRef(d.input)
 		}
 		var name C.CFStringRef
-		defer C.CFRelease(C.CFTypeRef(name))
 		if rc := C.MIDIObjectGetStringProperty(obj, C.kMIDIPropertyName, &name); rc != 0 {
 			return nil, coreMidiError(rc)
 		}
 		d.Name = fromCFString(name)
+		C.CFRelease(C.CFTypeRef(name))
 		devices = append(devices, d)
 	}
 	return devices, nil
