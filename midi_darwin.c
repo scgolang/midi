@@ -94,29 +94,34 @@ Midi_write_result Midi_write(Midi midi, const char *buffer, size_t buffer_size) 
 int Midi_close(Midi midi) {
 	assert(midi);
 
-	OSStatus rc1, rc2, rc3;
+	OSStatus rc1, rc2, rc3, rc4, rc5;
 
 	rc1 = MIDIPortDispose(midi->inputPort);
 	rc2 = MIDIPortDispose(midi->outputPort);
 	rc3 = MIDIClientDispose(midi->client);
+	rc4 = MIDIEndpointDispose(midi->input);
+	rc5 = MIDIEndpointDispose(midi->output);
+
+	FREE(midi);
 
 	if      (rc1 != 0) return rc1;
 	else if (rc2 != 0) return rc2;
 	else if (rc3 != 0) return rc3;
+	else if (rc4 != 0) return rc4;
+	else if (rc5 != 0) return rc5;
 	else               return 0;
 }
 
+// CFStringToUTF8 converts a CoreFoundation string to a UTF-encoded C string.
+// Callers are responsible for free'ing the returned string.
 char *CFStringToUTF8(CFStringRef aString) {
 	if (aString == NULL) {
 		return NULL;
 	}
-
-	CFIndex length = CFStringGetLength(aString);
-	CFIndex maxSize =
-		CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-	char *buffer = (char *)malloc(maxSize);
-	if (CFStringGetCString(aString, buffer, maxSize,
-			       kCFStringEncodingUTF8)) {
+	CFIndex length  = CFStringGetLength(aString);
+	CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+	char   *buffer  = (char *)malloc(maxSize);
+	if (CFStringGetCString(aString, buffer, maxSize, kCFStringEncodingUTF8)) {
 		return buffer;
 	}
 	free(buffer); // If we failed
