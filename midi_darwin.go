@@ -181,11 +181,11 @@ func Devices() ([]*Device, error) {
 			obj = C.MIDIObjectRef(d.input)
 		}
 		var name C.CFStringRef
+		defer C.CFRelease(C.CFTypeRef(name))
 		if rc := C.MIDIObjectGetStringProperty(obj, C.kMIDIPropertyName, &name); rc != 0 {
 			return nil, coreMidiError(rc)
 		}
 		d.Name = fromCFString(name)
-		C.CFRelease(C.CFTypeRef(name))
 		devices = append(devices, d)
 	}
 	return devices, nil
