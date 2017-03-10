@@ -13,7 +13,7 @@ func TestLaunchpad(t *testing.T) {
 	// The reason this package exists is because of issues that popped up when
 	// trying to use github.com/rakyll/portmidi to talk to the launchpad on Linux.
 	// For the launchpad MIDI reference, see https://d19ulaff0trnck.cloudfront.net/sites/default/files/novation/downloads/4080/launchpad-programmers-reference.pdf
-	// t.SkipNow()
+	t.SkipNow()
 
 	device := &Device{ID: "hw:0"}
 	if err := device.Open(); err != nil {

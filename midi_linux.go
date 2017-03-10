@@ -118,13 +118,14 @@ func Devices() ([]*Device, error) {
 		if err != nil {
 			return nil, err
 		}
+		devices = append(devices, cardDevices...)
+
 		if rc := C.snd_card_next(&card); rc != 0 {
 			return nil, alsaMidiError(rc)
 		}
 		if card < 0 {
 			break
 		}
-		devices = append(devices, cardDevices...)
 	}
 	return devices, nil
 }
