@@ -1,5 +1,3 @@
-// Package midi is a self-contained (i.e. doesn't depend on a C library)
-// package for talking to midi devices in Go.
 package midi
 
 // #include <stddef.h>
@@ -11,17 +9,15 @@ import "C"
 
 import (
 	"sync"
+	"unsafe"
 
 	"github.com/pkg/errors"
 )
 
 // Common errors.
 var (
-	ErrDeviceNotFound = errors.New("device not found, did you open the device?")
+	ErrNotOpen = errors.New("Did you remember to open the device?")
 )
-
-// Packet is a MIDI packet.
-type Packet [3]byte
 
 var (
 	packetChans      = map[*Device]chan Packet{}
@@ -30,18 +26,22 @@ var (
 
 // Device provides an interface for MIDI devices.
 type Device struct {
+	ID   string
 	Name string
+	Type DeviceType
 
 	// QueueSize controls the buffer size of the read channel. Use 0 for blocking reads.
 	QueueSize int
 
-	conn C.Midi
+	conn   C.Midi
+	input  C.MIDIEndpointRef
+	output C.MIDIEndpointRef
 }
 
 // Open opens a MIDI device.
 // queueSize is the number of packets to buffer in the channel associated with the device.
 func (d *Device) Open() error {
-	result := C.Midi_open(C.CString(d.Name))
+	result := C.Midi_open(d.input, d.output)
 	if result.error != 0 {
 		return coreMidiError(result.error)
 	}
@@ -58,6 +58,7 @@ func (d *Device) Close() error {
 }
 
 // Packets emits MIDI packets.
+// If the device has not been opened it will return ErrNotOpen.
 func (d *Device) Packets() (<-chan Packet, error) {
 	packetChansMutex.RLock()
 	for device, packetChan := range packetChans {
@@ -67,7 +68,7 @@ func (d *Device) Packets() (<-chan Packet, error) {
 		}
 	}
 	packetChansMutex.RUnlock()
-	return nil, ErrDeviceNotFound
+	return nil, ErrNotOpen
 }
 
 // Write writes data to a MIDI device.
@@ -84,7 +85,9 @@ func SendPacket(conn C.Midi, c1 C.uchar, c2 C.uchar, c3 C.uchar) {
 	packetChansMutex.RLock()
 	for device, packetChan := range packetChans {
 		if device.conn == conn {
-			packetChan <- Packet{byte(c1), byte(c2), byte(c3)}
+			packetChan <- Packet{
+				Data: [3]byte{byte(c1), byte(c2), byte(c3)},
+			}
 		}
 	}
 	packetChansMutex.RUnlock()
@@ -140,4 +143,62 @@ func coreMidiError(code C.OSStatus) error {
 	default:
 		return errors.Errorf("unknown CoreMIDI error: %d", code)
 	}
+}
+
+// Devices returns a list of devices.
+func Devices() ([]*Device, error) {
+	var (
+		maxEndpoints    C.ItemCount
+		devices                     = []*Device{}
+		numDestinations C.ItemCount = C.MIDIGetNumberOfDestinations()
+		numSources      C.ItemCount = C.MIDIGetNumberOfSources()
+	)
+	if numDestinations > numSources {
+		maxEndpoints = numDestinations
+	} else {
+		maxEndpoints = numSources
+	}
+	for i := C.ItemCount(0); i < maxEndpoints; i++ {
+		var (
+			d   *Device
+			obj C.MIDIObjectRef
+		)
+		if i < numDestinations && i < numSources {
+			d = &Device{
+				Type:   DeviceDuplex,
+				input:  C.MIDIGetSource(i),
+				output: C.MIDIGetDestination(i),
+			}
+			obj = C.MIDIObjectRef(d.output)
+		} else if i < numDestinations {
+			d = &Device{
+				Type:   DeviceOutput,
+				output: C.MIDIGetDestination(i),
+			}
+			obj = C.MIDIObjectRef(d.output)
+		} else {
+			d = &Device{
+				Type:  DeviceInput,
+				input: C.MIDIGetSource(i),
+			}
+			obj = C.MIDIObjectRef(d.input)
+		}
+		var name C.CFStringRef
+		if rc := C.MIDIObjectGetStringProperty(obj, C.kMIDIPropertyName, &name); rc != 0 {
+			return nil, coreMidiError(rc)
+		}
+		d.Name = fromCFString(name)
+		C.CFRelease(C.CFTypeRef(name))
+		devices = append(devices, d)
+	}
+	return devices, nil
+}
+
+func fromCFString(cfs C.CFStringRef) string {
+	var (
+		cs = C.CFStringToUTF8(cfs)
+		gs = C.GoString(cs)
+	)
+	C.free(unsafe.Pointer(cs))
+	return gs
 }

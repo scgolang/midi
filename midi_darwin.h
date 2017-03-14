@@ -30,7 +30,7 @@ typedef struct Midi_device_endpoints {
 } Midi_device_endpoints;
 
 // Midi_open opens a MIDI connection to the specified device.
-Midi_open_result Midi_open(const char *name);
+Midi_open_result Midi_open(MIDIEndpointRef input, MIDIEndpointRef output);
 
 // Midi_read_proc is the callback that gets invoked when MIDI data comes in.
 void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcConnRefCon);
@@ -46,5 +46,8 @@ Midi_write_result Midi_write(Midi midi, const char *buffer, size_t buffer_size);
 
 // Midi_close closes a MIDI connection.
 int Midi_close(Midi midi);
+
+// CFStringToUTF8 converts a CFStringRef to a UTF8-encoded C string.
+char *CFStringToUTF8(CFStringRef aString);
 
 #endif // MIDI_DARWIN_H defined

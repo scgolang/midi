@@ -1,5 +1,3 @@
-// Package midi is a self-contained (i.e. doesn't depend on a C library)
-// package for talking to midi devices in Go.
 package midi
 
 // #include <alsa/asoundlib.h>
@@ -11,22 +9,9 @@ import "C"
 
 import (
 	"fmt"
-	"os"
 	"unsafe"
 
 	"github.com/pkg/errors"
-)
-
-// Packet is a MIDI packet.
-type Packet [3]byte
-
-// DeviceType is a flag that says if a device is an input, an output, or duplex.
-type DeviceType int
-
-const (
-	DeviceInput DeviceType = iota
-	DeviceOutput
-	DeviceDuplex
 )
 
 // Device provides an interface for MIDI devices.
@@ -69,11 +54,12 @@ func (d *Device) Packets() (<-chan Packet, error) {
 	go func() {
 		for {
 			if _, err := d.Read(buf); err != nil {
-				fmt.Fprintf(os.Stderr, "could not read from device: %s", err)
-				close(ch)
+				ch <- Packet{Err: err}
 				return
 			}
-			ch <- Packet{buf[0], buf[1], buf[2]}
+			ch <- Packet{
+				Data: [3]byte{buf[0], buf[1], buf[2]},
+			}
 		}
 	}()
 	return ch, nil
@@ -98,10 +84,7 @@ func (d *Device) Write(buf []byte) (int, error) {
 	return int(n), err
 }
 
-type Stream struct {
-	Name string
-}
-
+// Devices returns a list of devices.
 func Devices() ([]*Device, error) {
 	var card C.int = -1
 

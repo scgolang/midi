@@ -12,9 +12,6 @@
 
 extern void SendPacket(Midi midi, unsigned char c1, unsigned char c2, unsigned char c3);
 
-Midi_device_endpoints  find_device_endpoints(const char *device);
-char                  *CFStringToUTF8(CFStringRef aString);
-
 // Midi represents a MIDI connection that uses the ALSA RawMidi API.
 struct Midi {
 	MIDIClientRef   client;
@@ -26,19 +23,14 @@ struct Midi {
 
 // Midi_open opens a MIDI connection to the specified device.
 // If there is an error it returns NULL.
-Midi_open_result Midi_open(const char *name) {
-	Midi           midi;
-	OSStatus       rc;
+Midi_open_result Midi_open(MIDIEndpointRef input, MIDIEndpointRef output) {
+	Midi     midi;
+	OSStatus rc;
 	
 	NEW(midi);
 
-	// Read input and output endpoints.
-	Midi_device_endpoints device_endpoints = find_device_endpoints(name);
-	if (device_endpoints.error != 0) {
-		return (Midi_open_result) { .midi = NULL, .error = device_endpoints.error };
-	}
-	midi->input  = device_endpoints.input;
-	midi->output = device_endpoints.output;
+	midi->input  = input;
+	midi->output = output;
 
 	rc = MIDIClientCreate(CFSTR("scgolang"), NULL, NULL, &midi->client);
 	if (rc != 0) {
@@ -52,7 +44,7 @@ Midi_open_result Midi_open(const char *name) {
 	if (rc != 0) {
 		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
-	rc = MIDIPortConnectSource(midi->inputPort, midi->input, midi);
+	rc = MIDIPortConnectSource(midi->inputPort, input, midi);
 	if (rc != 0) {
 		return (Midi_open_result) { .midi = NULL, .error = rc };
 	}
@@ -102,63 +94,34 @@ Midi_write_result Midi_write(Midi midi, const char *buffer, size_t buffer_size) 
 int Midi_close(Midi midi) {
 	assert(midi);
 
-	OSStatus rc1, rc2, rc3;
+	OSStatus rc1, rc2, rc3, rc4, rc5;
 
 	rc1 = MIDIPortDispose(midi->inputPort);
 	rc2 = MIDIPortDispose(midi->outputPort);
 	rc3 = MIDIClientDispose(midi->client);
+	rc4 = MIDIEndpointDispose(midi->input);
+	rc5 = MIDIEndpointDispose(midi->output);
+
+	FREE(midi);
 
 	if      (rc1 != 0) return rc1;
 	else if (rc2 != 0) return rc2;
 	else if (rc3 != 0) return rc3;
+	else if (rc4 != 0) return rc4;
+	else if (rc5 != 0) return rc5;
 	else               return 0;
 }
 
-Midi_device_endpoints find_device_endpoints(const char *name) {
-	ItemCount numDevices = MIDIGetNumberOfDevices();
-	OSStatus  rc;
-
-	for (int i = 0; i < numDevices; i++) {
-		CFStringRef   deviceName;
-		MIDIDeviceRef deviceRef = MIDIGetDevice(i);
-		
-		rc = MIDIObjectGetStringProperty(deviceRef, kMIDIPropertyName, &deviceName);
-		if (rc != 0) {
-			return (Midi_device_endpoints) { .device = 0, .input = 0, .output = 0, .error = rc };
-		}
-		if (strcmp(CFStringToUTF8(deviceName), name) != 0) {
-			continue;
-		}
-		ItemCount numEntities = MIDIDeviceGetNumberOfEntities(deviceRef);
-		
-		for (int i = 0; i < numEntities; i++) {
-			MIDIEntityRef entityRef       = MIDIDeviceGetEntity(deviceRef, i);
-			ItemCount     numDestinations = MIDIGetNumberOfDestinations(entityRef);
-			ItemCount     numSources      = MIDIGetNumberOfSources(entityRef);
-
-			if (numDestinations < 1 || numSources < 1) {
-				continue;
-			}
-			MIDIEndpointRef input  = MIDIGetSource(0);
-			MIDIEndpointRef output = MIDIGetDestination(0);
-
-			return (Midi_device_endpoints) { .device = deviceRef, .input = input, .output = output, .error = 0 };
-		}
-	}
-	return (Midi_device_endpoints) { .device = 0, .input = 0, .output = 0, .error = -10901 };
-}
-
+// CFStringToUTF8 converts a CoreFoundation string to a UTF-encoded C string.
+// Callers are responsible for free'ing the returned string.
 char *CFStringToUTF8(CFStringRef aString) {
 	if (aString == NULL) {
 		return NULL;
 	}
-
-	CFIndex length = CFStringGetLength(aString);
-	CFIndex maxSize =
-		CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-	char *buffer = (char *)malloc(maxSize);
-	if (CFStringGetCString(aString, buffer, maxSize,
-			       kCFStringEncodingUTF8)) {
+	CFIndex length  = CFStringGetLength(aString);
+	CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+	char   *buffer  = (char *)malloc(maxSize);
+	if (CFStringGetCString(aString, buffer, maxSize, kCFStringEncodingUTF8)) {
 		return buffer;
 	}
 	free(buffer); // If we failed
