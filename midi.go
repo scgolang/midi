@@ -16,3 +16,15 @@ const (
 	DeviceOutput
 	DeviceDuplex
 )
+
+// Note represents a MIDI note.
+type Note struct {
+	Number   int
+	Velocity int
+}
+
+// CC represents a MIDI control change message.
+type CC struct {
+	Number int
+	Value  int
+}
