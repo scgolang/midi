@@ -57,17 +57,26 @@ void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcC
 
 	Midi midi = (Midi) srcConnRefCon;
 
-	SendPacket(midi,
-		   (unsigned char) pkt->data[0],
-		   (unsigned char) pkt->data[1],
-		   (unsigned char) pkt->data[2]);
+	// TODO: handle packets that have more than three bytes
 
+	for (int j = 0; j < pkt->length % 3; j++) {
+		SendPacket(midi,
+			   (unsigned char) pkt->data[(j*3)+0],
+			   (unsigned char) pkt->data[(j*3)+1],
+			   (unsigned char) pkt->data[(j*3)+2]);
+	}
 	for (int i = 1; i < pkts->numPackets; i++) {
 		pkt = MIDIPacketNext(pkt);
-		SendPacket(midi,
-			   (unsigned char) pkt->data[0],
-			   (unsigned char) pkt->data[1],
-			   (unsigned char) pkt->data[2]);
+		for (int j = 0; j < pkt->length % 3; j++) {
+			SendPacket(midi,
+				   (unsigned char) pkt->data[(j*3)+0],
+				   (unsigned char) pkt->data[(j*3)+1],
+				   (unsigned char) pkt->data[(j*3)+2]);
+		}
+		/* SendPacket(midi, */
+		/* 	   (unsigned char) pkt->data[0], */
+		/* 	   (unsigned char) pkt->data[1], */
+		/* 	   (unsigned char) pkt->data[2]); */
 	}
 }
 
