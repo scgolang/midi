@@ -1,7 +1,7 @@
 # midi
 
 Dead simple MIDI package for Go.
-Currently only supports Linux.
+Currently only supports Linux and Mac.
 
 ## Install
 
