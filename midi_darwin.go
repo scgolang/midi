@@ -130,8 +130,9 @@ func coreMidiError(code C.OSStatus) error {
 		return errors.New("attempt to perform an operation that is not permitted")
 	case -10900:
 		// See Midi_write in midi_darwin.c if you're curious where the number comes from.
-		// [briansorahan] I tried to add a const to midi_darwin.h for this number, but it
-		// resulted in link errors:
+		// [briansorahan]
+		// I tried to add a const to midi_darwin.h for this number,
+		// but it resulted in link errors:
 		// duplicate symbol _kInsufficientSpaceInPacket in:
 		//     $WORK/github.com/scgolang/midi/_test/_obj_test/_cgo_export.o
 		//     $WORK/github.com/scgolang/midi/_test/_obj_test/midi_darwin.cgo2.o

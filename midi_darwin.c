@@ -59,8 +59,11 @@ void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcC
 	
 	for (int i = 0; i > pkts->numPackets; i++) {
 		pkt = MIDIPacketNext(pkt);
+		SendPacket(midi,
+			   (unsigned char) pkt->data[0],
+			   (unsigned char) pkt->data[1],
+			   (unsigned char) pkt->data[2]);
 	}
-	SendPacket(midi, (unsigned char) pkt->data[0], (unsigned char) pkt->data[1], (unsigned char) pkt->data[2]);
 }
 
 // Midi_write writes bytes to the provided MIDI connection.
