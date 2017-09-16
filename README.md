@@ -1,7 +1,7 @@
 # midi
 
 Dead simple MIDI package for Go.
-Currently only supports Linux.
+Currently only supports Linux and Mac.
 
 ## Install
 
@@ -9,8 +9,6 @@ Currently only supports Linux.
 go get github.com/scgolang/midi
 ```
 
-*Note the following caveats:*
+If you're on Linux, you'll have to install the ALSA development files.
 
-### Linux
-
-Requires ALSA development files.
+The package is probably named either `libasound2-dev` or `alsa-devel`.
