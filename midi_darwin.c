@@ -57,17 +57,12 @@ void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcC
 
 	Midi midi = (Midi) srcConnRefCon;
 
-	SendPacket(midi,
-		   (unsigned char) pkt->data[0],
-		   (unsigned char) pkt->data[1],
-		   (unsigned char) pkt->data[2]);
-
 	for (int i = 0; i < pkts->numPackets; i++) {
-		pkt = MIDIPacketNext(pkt);
 		SendPacket(midi,
 			   (unsigned char) pkt->data[0],
 			   (unsigned char) pkt->data[1],
 			   (unsigned char) pkt->data[2]);
+		pkt = MIDIPacketNext(pkt);
 	}
 }
 
