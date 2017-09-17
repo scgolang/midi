@@ -98,7 +98,7 @@ func SendPacket(conn C.Midi, pkt *C.MIDIPacket) {
 	}
 	var pkts []Packet
 
-	for i := C.UInt16(0); i < (pkt.length % 3); i++ {
+	for i := C.UInt16(0); i < (pkt.length / 3); i++ {
 		pkts = append(pkts, Packet{
 			Data: [3]byte{
 				byte(pkt.data[(i*3)+0]),
