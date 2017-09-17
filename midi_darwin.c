@@ -10,7 +10,7 @@
 #include "mem.h"
 #include "midi_darwin.h"
 
-extern void SendPacket(Midi midi, unsigned char c1, unsigned char c2, unsigned char c3);
+extern void SendPacket(Midi midi, const MIDIPacket *pkt);
 
 // Midi represents a MIDI connection that uses the ALSA RawMidi API.
 struct Midi {
@@ -57,26 +57,11 @@ void Midi_read_proc(const MIDIPacketList *pkts, void *readProcRefCon, void *srcC
 
 	Midi midi = (Midi) srcConnRefCon;
 
-	// TODO: handle packets that have more than three bytes
+	SendPacket(midi, pkt);
 
-	for (int j = 0; j < pkt->length % 3; j++) {
-		SendPacket(midi,
-			   (unsigned char) pkt->data[(j*3)+0],
-			   (unsigned char) pkt->data[(j*3)+1],
-			   (unsigned char) pkt->data[(j*3)+2]);
-	}
 	for (int i = 1; i < pkts->numPackets; i++) {
 		pkt = MIDIPacketNext(pkt);
-		for (int j = 0; j < pkt->length % 3; j++) {
-			SendPacket(midi,
-				   (unsigned char) pkt->data[(j*3)+0],
-				   (unsigned char) pkt->data[(j*3)+1],
-				   (unsigned char) pkt->data[(j*3)+2]);
-		}
-		/* SendPacket(midi, */
-		/* 	   (unsigned char) pkt->data[0], */
-		/* 	   (unsigned char) pkt->data[1], */
-		/* 	   (unsigned char) pkt->data[2]); */
+		SendPacket(midi, pkt);
 	}
 }
 

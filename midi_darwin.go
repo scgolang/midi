@@ -20,7 +20,7 @@ var (
 )
 
 var (
-	packetChans      = map[*Device]chan Packet{}
+	packetChans      = map[*Device]chan []Packet{}
 	packetChansMutex sync.RWMutex
 )
 
@@ -47,7 +47,7 @@ func (d *Device) Open() error {
 	}
 	d.conn = result.midi
 	packetChansMutex.Lock()
-	packetChans[d] = make(chan Packet, d.QueueSize)
+	packetChans[d] = make(chan []Packet, d.QueueSize)
 	packetChansMutex.Unlock()
 	return nil
 }
@@ -59,7 +59,7 @@ func (d *Device) Close() error {
 
 // Packets emits MIDI packets.
 // If the device has not been opened it will return ErrNotOpen.
-func (d *Device) Packets() (<-chan Packet, error) {
+func (d *Device) Packets() (<-chan []Packet, error) {
 	packetChansMutex.RLock()
 	for device, packetChan := range packetChans {
 		if d.conn == device.conn {
@@ -81,16 +81,33 @@ func (d *Device) Write(buf []byte) (int, error) {
 }
 
 //export SendPacket
-func SendPacket(conn C.Midi, c1 C.uchar, c2 C.uchar, c3 C.uchar) {
+func SendPacket(conn C.Midi, pkt *C.MIDIPacket) {
+	var ch chan []Packet
+
 	packetChansMutex.RLock()
 	for device, packetChan := range packetChans {
 		if device.conn == conn {
-			packetChan <- Packet{
-				Data: [3]byte{byte(c1), byte(c2), byte(c3)},
-			}
+			ch = packetChan
 		}
+		break
 	}
 	packetChansMutex.RUnlock()
+
+	if ch == nil {
+		return
+	}
+	var pkts []Packet
+
+	for i := C.UInt16(0); i < (pkt.length % 3); i++ {
+		pkts = append(pkts, Packet{
+			Data: [3]byte{
+				byte(pkt.data[(i*3)+0]),
+				byte(pkt.data[(i*3)+1]),
+				byte(pkt.data[(i*3)+2]),
+			},
+		})
+	}
+	ch <- pkts
 }
 
 // coreMidiError maps a CoreMIDI error code to a Go error.
