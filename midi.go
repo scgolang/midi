@@ -28,3 +28,23 @@ type CC struct {
 	Number int
 	Value  int
 }
+
+const (
+	MessageTypeUnknown = iota
+	MessageTypeCC
+	MessageTypeNoteOff
+	MessageTypeNoteOn
+	MessageTypePolyKeyPressure
+)
+
+// GetMessageType returns the message type for the provided packet.
+func GetMessageType(p Packet) int {
+	switch p.Data[0] & 0xF0 {
+	case 0x80:
+		return MessageTypeNoteOff
+	case 0x90:
+		return MessageTypeNoteOn
+	default:
+		return MessageTypeUnknown
+	}
+}
