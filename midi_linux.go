@@ -46,19 +46,23 @@ func (d *Device) Close() error {
 }
 
 // Packets returns a read-only channel that emits packets.
-func (d *Device) Packets() (<-chan Packet, error) {
+func (d *Device) Packets() (<-chan []Packet, error) {
 	var (
 		buf = make([]byte, 3)
-		ch  = make(chan Packet, d.QueueSize)
+		ch  = make(chan []Packet, d.QueueSize)
 	)
 	go func() {
 		for {
 			if _, err := d.Read(buf); err != nil {
-				ch <- Packet{Err: err}
+				ch <- []Packet{
+					{Err: err},
+				}
 				return
 			}
-			ch <- Packet{
-				Data: [3]byte{buf[0], buf[1], buf[2]},
+			ch <- []Packet{
+				{
+					Data: [3]byte{buf[0], buf[1], buf[2]},
+				},
 			}
 		}
 	}()
