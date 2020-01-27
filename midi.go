@@ -17,6 +17,19 @@ const (
 	DeviceDuplex
 )
 
+func (t DeviceType) String() string {
+	switch t {
+	case DeviceInput:
+		return "INPUT"
+	case DeviceOutput:
+		return "OUTPUT"
+	case DeviceDuplex:
+		return "DUPLEX"
+	default:
+		panic("unrecognized device type")
+	}
+}
+
 // Note represents a MIDI note.
 type Note struct {
 	Number   int
